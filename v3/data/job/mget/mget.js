@@ -390,7 +390,7 @@ MGet.OPTIONS = {
   'thread-initial-timeout': 10000, // ms
   'error-tolerance': 30, // number of times a single uri can throw error before breaking
   'error-delay': 300, // ms; min-delay before restarting the segment
-  'threads': 2, // number; max number of simultaneous threads
+  'threads': 8, // number; max number of simultaneous threads
   'next-segment-wait': 2000 // ms; time to wait after a segment is started, before considering the next segment,
 };
 

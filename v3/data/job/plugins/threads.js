@@ -25,7 +25,7 @@ storage.get({
   document.getElementById('threads').value = prefs.threads;
 
   document.getElementById('threads').onchange = e => {
-    const threads = Math.max(1, Math.min(5, e.target.valueAsNumber));
+    const threads = Math.max(1, Math.min(8, e.target.valueAsNumber));
     if (isNaN(threads) === false) {
       storage.set({
         threads

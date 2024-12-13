@@ -609,7 +609,7 @@ Use the box below to update the URL`, {
     }
     else {
       document.title = (stat.current / stat.total * 100).toFixed(1) +
-        `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` + ` [Threads: ${n.actives}]`;
+            `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` + ` [Threads: ${n.actives} | max: ${n.options.threads}]`;
 
       progress.value = stat.current;
       progress.max = stat.total;

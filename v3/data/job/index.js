@@ -598,7 +598,7 @@ Use the box below to update the URL`, {
       if (n.sizes.has(0)) {
         const percent = stat.fetched / n.sizes.get(0) * 100;
         document.title = percent.toFixed(1) + `% fetched [${MyGet.size(stat.fetched)}/${MyGet.size(n.sizes.get(0))}]` +
-          ` [Threads: ${n.actives}]`;
+          ` [Threads: ${n.actives} | max: ${n.options.threads}]`;
 
         progress.value = stat.fetched;
         progress.max = n.sizes.get(0);

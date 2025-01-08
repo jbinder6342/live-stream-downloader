@@ -33,7 +33,7 @@ class EGet extends MyGet {
     this.options['thread-timeout'] = this.options['thread-timeout'] || 10000; // ms
     this.options['thread-initial-timeout'] = this.options['thread-initial-timeout'] || 10000; // ms
     // number of times a single uri can throw error before breaking
-    this.options['error-tolerance'] = this.options['error-tolerance'] || 30; // number;
+    this.options['error-tolerance'] = this.options['error-tolerance'] || 60; // number;
     // min-delay before restarting the segment
     this.options['error-delay'] = this.options['error-delay'] || 300; // ms;
     this.options['error-handler'] = e => Promise.reject(e);

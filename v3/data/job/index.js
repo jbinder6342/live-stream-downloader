@@ -626,33 +626,43 @@ ${kt.map(([id, a]) => {
     }
   });
 
-  Object.assign(n.options, await storage.get({
-    'threads': MyGet.OPTIONS.threads,
-    'thread-timeout': MyGet.OPTIONS['thread-timeout']
-  }));
+    Object.assign(n.options, await storage.get({
+	'threads': MyGet.OPTIONS.threads,
+	'thread-timeout': MyGet.OPTIONS['thread-timeout']
+    }));
 
-  // instead of breaking, let the user retry
-  n.options['error-handler'] = (e, source, href) => {
-    return self.prompt(`Connection to the server is broken (${source} -> ${e.message})!
+    // instead of breaking, let the user retry
+    n.options['error-handler'] = (e, source, href) => {
+
+	console.info('HTTP error:${e.message} on URL:${href}', e);
+	
+	// HTTP 416 error also as Range Not Satisfiable occurs if some particular
+	// request of your browser trying to access just a portion of a resource on a server cannot be met. 
+	// 
+	if (e.message.includes("STATUS_416") || e.message.includes("Failed to fetch") ) {
+	    return href;
+	}
+	
+	return self.prompt(`Connection to the server is broken (${href}. ${source} -> ${e.message})!
 
 Use the box below to update the URL`, {
-      ok: 'Retry',
-      no: 'Cancel',
-      value: href
-    }, true).then(v => {
-      if (v) {
+    ok: 'Retry',
+    no: 'Cancel',
+    value: href
+}, true).then(v => {
+    if (v) {
         try {
-          new URL(v);
-          return v;
+            new URL(v);
+            return v;
         }
         catch (e) {
-          console.info('URL replacement ignored', e);
+            console.info('URL replacement ignored', e);
         }
-      }
-    });
-  };
+    }
+});
+    };
 
-  console.info('MyGet Instance', n);
+    console.info('MyGet Instance', n);
 
   const timer = setInterval(() => {
     // downloading a single file

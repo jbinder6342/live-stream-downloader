@@ -662,7 +662,7 @@ Use the box below to update the URL`, {
 });
     };
 
-    console.info('MyGet Instance', n);
+    console.info('MyGet Instance n:', n, 'stat:', stat);
 
   const timer = setInterval(() => {
     // downloading a single file

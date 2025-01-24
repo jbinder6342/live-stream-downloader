@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "version": "0.5.4.4",
-  "name": "Live Stream Downloader-jsbrev",
-  "description": "__MSG_description__",
+  "version": "0.5.4.5",
+  "name": "Live Stream Downloader-jsb-rev",
+  "description": "Live Stream Downloader-jsb-rev",
   "default_locale": "en",
   "permissions": [
     "storage",

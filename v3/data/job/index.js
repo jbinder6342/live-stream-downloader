@@ -89,26 +89,26 @@ Promise.all([
     }
   }
 
-  let forbiddens = 0;
-  // remove forbidden links
-  const blocked = await network.blocked();
-  for (const [stream, entry] of entries.entries()) {
-    entry.blocked = blocked({
-      host: args.get('href'),
-      stream
-    });
-    if (entry.blocked.value) {
-      forbiddens += 1;
-    }
-  }
+  // let forbiddens = 0;
+  // // remove forbidden links
+  // const blocked = await network.blocked();
+  // for (const [stream, entry] of entries.entries()) {
+  //   entry.blocked = blocked({
+  //     host: args.get('href'),
+  //     stream
+  //   });
+  //   if (entry.blocked.value) {
+  //     forbiddens += 1;
+  //   }
+  // }
 
   await addEntries(entries);
 
-  // forbidden
-  document.getElementById('forbiddens').textContent = forbiddens;
-  if (forbiddens) {
-    document.body.classList.add('forbidden');
-  }
+  // // forbidden
+  // document.getElementById('forbiddens').textContent = forbiddens;
+  // if (forbiddens) {
+  //   document.body.classList.add('forbidden');
+  // }
 });
 
 const error = e => {

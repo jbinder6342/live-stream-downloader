@@ -19,57 +19,54 @@
 
 /* global events */
 
-if (/Firefox/.test(navigator.userAgent)) {
-  document.getElementById('power-container').classList.add('disabled');
-}
-else {
-  chrome.permissions.contains({
-    permissions: ['power']
-  }, granted => {
-    chrome.runtime.lastError;
-    document.getElementById('power').checked = granted;
+// use the HTML Screen Wake Lock API instead of the "power" permission
+const powerContainer = document.getElementById('power-container');
+const power = document.getElementById('power');
+
+let wakeLock = null;
+
+const request = async () => {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+  }
+  catch (e) {
+    console.warn('Keep Awake is not available', e);
+  }
+};
+const release = () => {
+  if (wakeLock) {
+    wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+};
+
+chrome.storage.local.get({
+  'power': true
+}, prefs => {
+  power.checked = prefs.power;
+  if (!('wakeLock' in navigator)) {
+    powerContainer.classList.add('disabled');
+  }
+});
+
+power.addEventListener('change', e => {
+  chrome.storage.local.set({
+    'power': e.target.checked
   });
+});
 
-  document.getElementById('power').addEventListener('change', e => {
-    if (e.target.checked) {
-      chrome.permissions.request({
-        permissions: ['power']
-      }, granted => {
-        if (granted) {
-          self.notify('Done, Reopen this window to apply', 2000);
-        }
-        else {
-          e.target.checked = false;
-        }
-      });
-    }
-    else {
-      chrome.permissions.remove({
-        permissions: ['power']
-      });
-      self.notify('Done, Reopen this window to apply', 2000);
-    }
-  });
+events.before.add(() => {
+  if (power.checked) {
+    request();
+  }
+});
+events.after.add(release);
 
-  events.before.add(() => {
-    if (chrome.power) {
-      chrome.power.requestKeepAwake('display');
-    }
-  });
-  events.after.add(() => chrome.runtime.sendMessage({
-    method: 'release-awake-if-possible'
-  }, () => chrome.runtime.lastError));
+// the wake lock is released when the tab is hidden; re-acquire it on return
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && power.checked && document.body.dataset.mode === 'download') {
+    request();
+  }
+});
 
-  // check after 1 minute
-  // in case there is an active downloading job and the warning prevents the window from being closed
-  addEventListener('beforeunload', () => chrome.alarms.create('release-awake-if-possible', {
-    when: Date.now() + 60000
-  }));
-
-  chrome.runtime.onMessage.addListener((request, sender, response) => {
-    if (request.method === 'any-active' && document.body.dataset.mode === 'download') {
-      response(true);
-    }
-  });
-}
-
+addEventListener('beforeunload', release);

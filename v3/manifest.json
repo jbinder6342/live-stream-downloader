@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.5.7.11",
+  "version": "0.5.9.11",
   "name": "Live Stream Downloader - jsb rev.",
   "description": "__MSG_description__",
   "default_locale": "en",
@@ -13,9 +13,7 @@
     "scripting",
     "alarms"
   ],
-  "optional_permissions": [
-    "power"
-  ],
+
   "host_permissions": [
     "*://*/*"
   ],
@@ -26,6 +24,7 @@
       "network/core.js",
       "network/icon.js",
       "context.js",
+      "plugins/blob-detector/tld.js",
       "plugins/blob-detector/core.js",
       "data/job/extract.js",
       "worker.js"
@@ -47,7 +46,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "{2ea2bfef-af69-4427-909c-34e1f3f5a418}",
-      "strict_min_version": "128.0"
+      "strict_min_version": "148.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
 }

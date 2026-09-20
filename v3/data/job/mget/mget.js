@@ -118,22 +118,32 @@ class MGet {
           position += 1;
 
           if (segment) {
-            try {
-              const p = position - 1;
-
-              await this.prepare(segment, p);
-              await this.pipe(segment, params, p, () => {
-                // start a new segment if we have a free thread and there are leftover segments
-                if (this.number() && segments.length) {
-                  start();
+            const p = position - 1;
+            let retryCount = 10;
+            while (retryCount > 0) {
+              try {
+                let sm = { ...segment, range: segment.range && { ...segment.range } };
+                await this.prepare(sm, p);
+                await this.pipe(sm, params, p, () => {
+                  // start a new segment if we have a free thread and there are leftover segments
+                  if (this.number() && segments.length) {
+                    start();
+                  }
+                });
+                await this.flush(sm, p);
+                break;
+              }
+              catch (e) {
+                if (e?.message === 'PIPE_SIZE_MISMATCH' && retryCount > 1) {
+                  console.error(e.message, 'at position:', position, 'Download it again!', retryCount - 1, 'retries left');
+                  retryCount -= 1;
+                  continue;
                 }
-              });
-              await this.flush(segment, p);
-              start();
+                reject(e);
+                break;
+              }
             }
-            catch (e) {
-              reject(e);
-            }
+            start();
           }
           else {
             if (this.actives === 0) {

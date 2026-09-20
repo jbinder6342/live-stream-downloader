@@ -89,7 +89,7 @@
       },
       {
         "name": "download_media",
-        "description": "Queue media files for download. Opens the downloader interface with the specified media items already added.",
+        "description": "Queue media files for download. Opens the downloader interface with the specified media items already added. Supports HLS streams.",
         "inputSchema": {
           "type": "object",
           "properties": {

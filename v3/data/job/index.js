@@ -159,10 +159,8 @@ ${timingObjects.map(([id, a]) => {
         const name = file.name.replace(/\.(?=[^.]+$)/, '-' + timeline + '.');
         jobs.push({name, segments});
       }
-      try {
-        file.remove();
-      }
-      catch (e) {}
+      // delete the picked file; only present in OPFS (Firefox), a no-op in Chrome
+      self.removeOPFSFile?.(file);
       return self.batch(jobs, codec);
     }
     else if (selected !== 'extra-1') {
@@ -279,6 +277,10 @@ Use the box below to update the URL`, {
   }, 750);
 
   try {
+    // make the staged (OPFS; Firefox) file persistent so this long download cannot
+    // be evicted mid-way; the user's response is awaited before the download continues
+    await self.requestPersistentStorage?.();
+
     // attach disk writer
     await myGet.attach(file);
 
@@ -313,6 +315,9 @@ Use the box below to update the URL`, {
     document.body.dataset.mode = 'done';
   }
   catch (e) {
+    // the download did not complete; delete the local (OPFS) copy.
+    // this is a no-op when the file is on the user's disk (Chrome)
+    self.removeOPFSFile?.(file);
     error(e);
   }
   clearInterval(timer);
@@ -360,6 +365,8 @@ const setQueued = (div, queued) => {
         for (const [div, record] of queue) {
           record.controller.abort(Error('QUEUE_ABORT')); // rejects the unlimited promise
           setQueued(div, false);
+          // the download never started; remove the leftover pick (OPFS only)
+          self.removeOPFSFile?.(record.file);
         }
         queue.clear();
         self.notify('Queue canceled');
@@ -371,43 +378,100 @@ const setQueued = (div, queued) => {
   });
 }
 
-/* ask user for picking a location; adjust the suggested name if the explorer rejects it */
-const pickSaveFile = async opts => {
-  // the explorer rejects the suggested name
-  // opts.types[0].accept = {'dd/vv': ['.longextensionfile']};
-  try {
-    // use the original name
-    return await window.showSaveFilePicker(opts);
+/* prepare the changes that a rejected save request requires; null when there is nothing to adjust */
+const adjust = opts => {
+  const msgs = [];
+
+  // remove illegal or problematic characters from the suggested name for Windows, macOS, Linux
+  // https://github.com/chandler-stimson/live-stream-downloader/issues/46
+  let name = opts.suggestedName || '';
+  const n = name.replace(
+    /[\\/:*?"<>|\0]|^[\s.]+|[\s.]+$|[~`!@#$%^&+={}[\];,]/g,
+    '_'
+  );
+  if (n !== name) {
+    msgs.push(`The file name "${name}" contains unsupported characters and is replaced by "${n}".`);
+    name = n;
   }
-  catch (e) {
-    if (e?.name !== 'AbortError') {
-      console.error(e);
+
+  // the file type filter must be dropped when a MIME type or an extension is not acceptable
+  const types = Array.isArray(opts.types) ? opts.types : [];
+  const accept = types[0]?.accept;
+  const invalid = accept && Object.entries(accept).some(([mime, exts]) => {
+    return /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(mime) === false ||
+      exts.some(ext => /^\.[^.]{1,15}$/.test(ext) === false);
+  });
+  if (types.length && (!accept || invalid)) {
+    msgs.push('The requested file type filter is rejected by the file dialog and will be removed. The "All files" filter can then be used to select any file name.');
+    return {
+      name,
+      dropTypes: true,
+      msg: msgs.join('\n')
+    };
+  }
+
+  return msgs.length ? {
+    name,
+    msg: msgs.join('\n')
+  } : null;
+};
+
+/* ask user for picking a location; when the request fails, report the required changes
+   to the user and let the dialog itself provide the user gesture that each retried request needs */
+const pickSaveFile = async opts => {
+  let attempts = 0;
+  let firstError = null;
+  for (;;) {
+    try {
+      // use the original name
+      return await window.showSaveFilePicker(opts);
     }
-    if (e instanceof TypeError) {
-      try {
-        // try to remove illegal or problematic characters for Windows, macOS, Linux
-        // https://github.com/chandler-stimson/live-stream-downloader/issues/46
-        opts.suggestedName = opts.suggestedName.replace(
-          /[\\/:*?"<>|\0]|^[\s.]+|[\s.]+$|[~`!@#$%^&+={}[\];,]/g,
-          '_'
-        );
-        return await window.showSaveFilePicker(opts);
+    catch (e) {
+      if (e?.name !== 'AbortError') {
+        console.error(e);
       }
-      catch (e) {
-        if (e?.name !== 'AbortError') {
-          console.error(e);
-        }
-        if (e instanceof TypeError) {
-          delete opts.suggestedName;
-          return await window.showSaveFilePicker(opts);
+      firstError = firstError || e;
+      attempts += 1;
+
+      // do not retry endlessly; the first error is the actual cause
+      if (attempts >= 3) {
+        throw firstError;
+      }
+      // an unknown error cannot be fixed by retrying with a fresh gesture
+      if (e?.name !== 'AbortError' && e instanceof TypeError === false) {
+        throw e;
+      }
+
+      const proposal = adjust(opts);
+      try {
+        // activating this dialog hands its user gesture over to the retried picker call below
+        const name = await self.prompt(proposal ? `The file dialog rejected this request.
+
+${proposal.msg}
+
+Update the file name and retry?` : `The file dialog request was aborted before it could be shown.
+
+Update the file name and retry?`, {
+          ok: 'Retry',
+          no: 'Cancel',
+          value: proposal ? proposal.name : (opts.suggestedName || '')
+        });
+
+        if (name) {
+          opts.suggestedName = name;
         }
         else {
-          throw e;
+          // the user cleared the box; let the file dialog suggest a name
+          delete opts.suggestedName;
+        }
+        if (proposal?.dropTypes) {
+          delete opts.types;
         }
       }
-    }
-    else {
-      throw e;
+      catch {
+        // the user canceled the dialog; keep the original picker error
+        throw firstError;
+      }
     }
   }
 };
@@ -416,13 +480,18 @@ const run = async (div, picked, button) => {
   const label = button.value; // preserve for restoring (it may be localized)
   document.body.dataset.mode = 'prepare';
 
+  // used by the catch below to remove a picked-but-unused file (OPFS only)
+  let file = null;
+
   try {
     div.dataset.active = true;
 
     const opts = helper.options(div);
-    let file = picked || self.aFile;
+    file = picked || self.aFile;
     // ask user for picking
     if (!file) {
+      // example for failing download
+      // {suggestedName: 'x.mkv', types: [{description: 'V', accept: {'video/x-matroska': ['.verylongextensionfile']}}]}
       file = await pickSaveFile(opts);
     }
 
@@ -465,6 +534,10 @@ const run = async (div, picked, button) => {
     div.classList.add('done');
   }
   catch (e) {
+    // a picked but unused file must not be left behind (OPFS only; a no-op in Chrome)
+    if (file?.opfsStaged) {
+      self.removeOPFSFile?.(file);
+    }
     // the user dismissed the file picker dialog; this is not an error
     if (e?.name === 'AbortError') {
       document.body.dataset.mode = 'ready';
@@ -501,8 +574,10 @@ document.getElementById('hrefs').onsubmit = async e => {
   // queue: pick the location now; the download continues once Start is pressed
   if (action === 'queue') {
     document.body.dataset.mode = 'prepare';
+    // used by the catch below to remove a picked-but-unqueued file (OPFS only)
+    let file = null;
     try {
-      const file = await pickSaveFile(helper.options(div));
+      file = await pickSaveFile(helper.options(div));
 
       const record = {
         controller: new AbortController(),
@@ -529,6 +604,10 @@ document.getElementById('hrefs').onsubmit = async e => {
       document.body.dataset.mode = 'ready';
     }
     catch (e) {
+      // the file was picked but never queued; do not leave it behind (OPFS only)
+      if (file?.opfsStaged) {
+        self.removeOPFSFile?.(file);
+      }
       // the user dismissed the file picker dialog; this is not an error
       if (e?.name === 'AbortError') {
         document.body.dataset.mode = 'ready';
@@ -556,6 +635,8 @@ document.getElementById('hrefs').onsubmit = async e => {
       record.controller.abort(Error('QUEUE_ABORT')); // rejects the unlimited promise
       queue.delete(div);
       setQueued(div, false);
+      // the download never started; remove the leftover pick (OPFS only)
+      self.removeOPFSFile?.(record.file);
     }
     return;
   }

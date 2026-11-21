@@ -221,8 +221,6 @@ ${timingObjects.map(([id, a]) => {
     'thread-timeout': MyGet.OPTIONS['thread-timeout']
   }));
 
-  console.info('threads:', MyGet.OPTIONS.threads, 'thread-timeout:', MyGet.OPTIONS['thread-timeout']);
-    
   // instead of breaking, let the user retry
   myGet.options['error-handler'] = (e, source, href) => {
     return self.prompt(`Connection to the server is broken (${source} -> ${e.message})!
@@ -245,7 +243,7 @@ Use the box below to update the URL`, {
   };
 
   console.info('MyGet Instance', myGet);
-    
+
   const timer = setInterval(() => {
     // downloading a single segment file
     if (stat.total === 1) {
@@ -253,7 +251,7 @@ Use the box below to update the URL`, {
         const percent = stat.fetched / myGet.sizes.get(0) * 100;
         document.title =
           percent.toFixed(1) + `% fetched [${MyGet.size(stat.fetched)}/${MyGet.size(myGet.sizes.get(0))}]` +
-              ` [Threads: ${myGet.actives} | Max: ${MyGet.OPTIONS.threads}]`;
+          ` [Threads: ${myGet.actives}]`;
 
         progress.value = stat.fetched;
         progress.max = myGet.sizes.get(0);
@@ -265,7 +263,7 @@ Use the box below to update the URL`, {
     // downloading multiple segment file
     else {
       document.title = (stat.current / stat.total * 100).toFixed(1) +
-            `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` + ` [Threads: ${myGet.actives}| Max: ${MyGet.OPTIONS.threads}]`;
+        `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` + ` [Threads: ${myGet.actives}]`;
 
       progress.value = stat.current;
       progress.max = stat.total;

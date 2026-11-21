@@ -403,15 +403,15 @@ class MGet {
   }
 }
 MGet.OPTIONS = {
-  'thread-size': 3 * 1024 * 1024, // bytes; size of each segment (do not increase unless check with a large file)
+  'thread-size': 6 * 1024 * 1024, // bytes; size of each segment (do not increase unless check with a large file)
   // thread-timeout: ms for inactivity period before breaking. Do not use small value since it is also used for
   // downloading from server that does not support ranging
   'thread-timeout': 10000, // ms
   'thread-initial-timeout': 10000, // ms
-  'error-tolerance': 30, // number of times a single uri can throw error before breaking
+  'error-tolerance': 75, // number of times a single uri can throw error before breaking
   'error-delay': 300, // ms; min-delay before restarting the segment
   'threads': 6, // number; max number of simultaneous threads
-  'next-segment-wait': 2000 // ms; time to wait after a segment is started, before considering the next segment,
+  'next-segment-wait': 1000 // ms; time to wait after a segment is started, before considering the next segment,
 };
 
 self.MyGet = MGet;

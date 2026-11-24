@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "version": "0.6.2",
-  "name": "Live Stream Downloader -- jsb rev.",
+  "version": "0.6.3",
+  "name": "Live Stream Downloader -- Jsb Rev.",
   "description": "__MSG_description__",
   "default_locale": "en",
   "permissions": [

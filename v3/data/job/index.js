@@ -251,7 +251,7 @@ Use the box below to update the URL`, {
         const percent = stat.fetched / myGet.sizes.get(0) * 100;
         document.title =
           percent.toFixed(1) + `% fetched [${MyGet.size(stat.fetched)}/${MyGet.size(myGet.sizes.get(0))}]` +
-          ` [Threads: ${myGet.actives}]`;
+          ` [Threads: ${myGet.actives}| Max: ${myGet.options['threads']}]`;
 
         progress.value = stat.fetched;
         progress.max = myGet.sizes.get(0);
@@ -261,9 +261,10 @@ Use the box below to update the URL`, {
       }
     }
     // downloading multiple segment file
-    else {
+      else {
       document.title = (stat.current / stat.total * 100).toFixed(1) +
-        `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` + ` [Threads: ${myGet.actives}]`;
+              `% fetched [${stat.current}/${stat.total}] (${MyGet.size(stat.fetched)})` +
+	      ` [Threads: ${myGet.actives}| Max: ${myGet.options['threads']}]`;
 
       progress.value = stat.current;
       progress.max = stat.total;
